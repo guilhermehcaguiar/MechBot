@@ -13,7 +13,7 @@ def webhook():
         token = request.args.get('hub.verify_token')
         challenge = request.args.get('hub.challenge')
         if mode and token:
-            if mode == 'subscribe' and token == 'minha_oficina_123':
+            if mode == 'subscribe' and token == os.getenv('VERIFY_TOKEN'):
                 return challenge, 200
             else:
                 return 'Forbidden', 403
@@ -26,4 +26,5 @@ def webhook():
 def health_check():
     return "Bot funcionando!", 200
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)

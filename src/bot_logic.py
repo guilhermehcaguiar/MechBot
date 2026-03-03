@@ -13,7 +13,7 @@ class MechBot:
         if 0 <= dia_semana <= 4:
             return 8 <= hora_decimal < 17.5
         if dia_semana == 5:
-            return 8 <= hora_decimal < 1
+            return 8 <= hora_decimal < 12
         return False
     def enviar_mensagem(self, telefone, texto):
         if not self.token:
