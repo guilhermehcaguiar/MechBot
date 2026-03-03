@@ -1,48 +1,87 @@
+import requests
+import os
+from datetime import datetime
 class MechBot:
-    #dicionario armazena o estado atual do atendimento para cada telefone, permitindo que o bot se "lembre" do estado do cliente
     def __init__(self):
         self.atendimento_ativo = {}
+        self.url = f"https://graph.facebook.com/{os.getenv('VERSION')}/{os.getenv('PHONE_NUMBER_ID')}/messages"
+        self.token = os.getenv('WHATSAPP_TOKEN')
+    def is_horario_comercial(self):
+        agora = datetime.now()
+        dia_semana = agora.weekday()
+        hora_decimal = agora.hour + agora.minute / 60
+        if 0 <= dia_semana <= 4:
+            return 8 <= hora_decimal < 17.5
+        if dia_semana == 5:
+            return 8 <= hora_decimal < 1
+        return False
+    def enviar_mensagem(self, telefone, texto):
+        if not self.token:
+            print(f"Sinal de {telefone}. Resposta: {texto}")
+            return
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": telefone,
+            "type": "text",
+            "text": {"body": texto}
+        }
+        try:
+            requests.post(self.url, headers=headers, json=payload)
+        except Exception as e:
+            print(f"Erro na API: {e}")
     def responder(self, telefone, mensagem):
-        texto= mensagem.strip().lower()
+        texto = mensagem.strip().lower()
+        if not self.is_horario_comercial():
+            resposta = (
+                "🌙 *Olá! No momento estamos fechados.*\n\n"
+                "Nosso horário é:\n"
+                "Seg a Sex: 08h às 17:30\n"
+                "Sábado: 08h às 12h\n\n"
+                "Deixe sua mensagem e retornaremos em breve! 🚗"
+            )
+            self.enviar_mensagem(telefone, resposta)
+            return resposta
 
-        #se o cliente não tiver um atendimento ativo, inicia um novo atendimento e exibimos o menu
         if telefone not in self.atendimento_ativo:
-            self.atendimento_ativo[telefone] = {"etapa_atendimento": "MENU"}
-            return self.exibir_menu()
-        
-        #se o cliente já tiver um atendimento ativo, verifica a etapa atual para direcionar a resposta
-        estado_atual = self.atendimento_ativo[telefone]["etapa_atendimento"]
-        if estado_atual == "MENU":
-            if texto == "1":
-                self.atendimento_ativo[telefone]["etapa_atendimento"] = "PERGUNTA_CADASTRO"
-                return "Você já é cliente cadastrado na nossa oficina?\n1 - Sim\n2 - Não"
-            elif texto == "2":
-                self.atendimento_ativo[telefone]["etapa_atendimento"] = "CONSULTA_PLACA"
-                return "Para acompanhar seu serviço, informe a placa do veículo."
-            else:
-                return "Opção inválida. Digite 1 ou 2."
-        elif estado_atual == "PERGUNTA_CADASTRO":
-            if texto in ["1", "sim", "s", "ss"]:
-                self.atendimento_ativo[telefone]["etapa_atendimento"] = "AGUARDANDO_DADOS"
-                return "Ótimo! Informe apenas seu CPF ou a Placa do veículo."
-            elif texto in ["2", "não", "nao", "n"]:
-                self.atendimento_ativo[telefone]["etapa_atendimento"] = "AGUARDANDO_DADOS"
-                return "Seja bem-vindo! Informe: Nome, Telefone para contato, CPF, Placa e Endereço completo com CEP."
-            else:
-                return "Por favor, responda com 1 (Sim) ou 2 (Não)."
-        elif estado_atual == "AGUARDANDO_DADOS":
-            del self.atendimento_ativo[telefone] 
-            return "Obrigado! Recebemos seus dados. Um consultor entrará em contato em breve."
-        elif estado_atual == "CONSULTA_PLACA":
-            placa = texto.upper()
-            del self.atendimento_ativo[telefone] 
-            return "Obrigado! Um consultor entrará em breve em contato para informar o status do veículo."
-        #se o estado atual não for reconhecido, reseta o atendimento.
-
+            self.atendimento_ativo[telefone] = {"etapa": "MENU"}
+            resposta = self.exibir_menu()
+        else:
+            etapa = self.atendimento_ativo[telefone]["etapa"]
+            if etapa == "MENU":
+                if texto == "1":
+                    self.atendimento_ativo[telefone]["etapa"] = "PERGUNTA_CADASTRO"
+                    resposta = "Você já é cliente cadastrado na nossa oficina?\n1 - Sim\n2 - Não"
+                elif texto == "2":
+                    self.atendimento_ativo[telefone]["etapa"] = "CONSULTA_PLACA"
+                    resposta = "Para acompanhar seu serviço, informe a *PLACA* do veículo."
+                elif texto == "3":
+                    self.atendimento_ativo[telefone]["etapa"] = "ATENDENTE"
+                    resposta = "👨‍💻 Entendido! Um consultor falará com você em breve."
+                else:
+                    resposta = "⚠️ Opção inválida. Digite 1, 2 ou 3."
+            elif etapa == "PERGUNTA_CADASTRO":
+                self.atendimento_ativo[telefone]["etapa"] = "AGUARDANDO_DADOS"
+                if texto in ["1", "sim", "s"]:
+                    resposta = "Ótimo! Por favor, informe seu *CPF* para localizarmos seu cadastro."
+                else:
+                    resposta = "Seja bem-vindo! Para iniciarmos, informe seu *NOME COMPLETO* e o *MODELO* do veículo."
+            elif etapa == "AGUARDANDO_DADOS":
+                del self.atendimento_ativo[telefone]
+                resposta = "Obrigado! Recebemos suas informações. Um consultor entrará em contato para seguir com o orçamento. 📝"
+            elif etapa == "CONSULTA_PLACA":
+                del self.atendimento_ativo[telefone]
+                resposta = f"Recebi a placa *{texto.upper()}*. Estamos verificando o status no sistema e te avisaremos em instantes! 🔍"
+        self.enviar_mensagem(telefone, resposta)
+        return resposta
     def exibir_menu(self):
         return (
-            "🔧 *Bem-Vindo à Oficina Atend-Car*\n"
-            "Como posso ajudar hoje?\n"
-            "1 - Orçamento\n"
-            "2 - Status do Serviço"
+            "🔧 *Oficina Atend-Car*\n"
+            "Como podemos ajudar hoje?\n\n"
+            "1 - Solicitar Orçamento\n"
+            "2 - Ver Status do Serviço\n"
+            "3 - Falar com Atendente"
         )

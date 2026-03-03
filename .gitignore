@@ -1,8 +1,12 @@
+# Ambiente Virtual
 venv/
-env/
+# Variáveis de Ambiente (Segurança: NÃO SUBIR TOKEN/SENHAS)
+.env
+# Cache do Python
 __pycache__/
 *.pyc
-.env
+# Configurações do VS Code
 .vscode/
+# Arquivos de Sistema
 .DS_Store
 Thumbs.db
