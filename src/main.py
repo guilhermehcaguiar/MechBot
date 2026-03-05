@@ -3,7 +3,7 @@ from flask import Flask, request, jsonify
 from bot_logic import MechBot
 import os
 from dotenv import load_dotenv
-load_dotenv()
+#load_dotenv()
 app = Flask(__name__)
 bot = MechBot()
 @app.route('/webhook', methods=['GET', 'POST'])
