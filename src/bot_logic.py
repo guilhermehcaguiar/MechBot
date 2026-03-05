@@ -30,7 +30,8 @@ class MechBot:
             "text": {"body": texto}
         }
         try:
-            requests.post(self.url, headers=headers, json=payload)
+            response = requests.post(self.url, headers=headers, json=payload)
+            print(f"DEBUG API META: {response.status_code} - {response.text}") 
         except Exception as e:
             print(f"Erro na API: {e}")
     def responder(self, telefone, mensagem):
