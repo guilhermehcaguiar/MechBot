@@ -20,8 +20,9 @@ def webhook():
     elif request.method == 'POST':
         dados_brutos = request.get_json()
         nova_msg = Mensagem_Recebida(dados_brutos)
-        resposta_bot = bot.responder(nova_msg.telefone_cliente, nova_msg.msg_cliente)
-        return jsonify({"status": "success", "reply": resposta_bot}), 200
+        resposta_meta = bot.responder(nova_msg.telefone_cliente, nova_msg.msg_cliente)
+        print(f"DEBUG: Resposta da Meta -> {resposta_meta}")
+        return jsonify({"status": "success"}), 200
 @app.route('/health', methods=['GET'])
 def health_check():
     return "Bot funcionando!", 200
